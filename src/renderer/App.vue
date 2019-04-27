@@ -3,15 +3,24 @@
     <div class="qrLoginImg" v-if="!isLogin">
       <img :src="qrLoginImg"/>
     </div>
-    <el-container v-if="isLogin">
-      <el-header height="30px">
+    <div v-if="isLogin">
         <el-tabs v-model="activeName" @tab-click="handleClick">
-          <el-tab-pane label="抢购" name="first"></el-tab-pane>
+          <el-tab-pane label="抢购" name="first">
+            <el-row>
+              <el-col :span="22">
+                <el-input placeholder="请输入商品地址" size="mini" v-model="goodsUrl">
+                  <template slot="prepend">URL</template>
+                  <el-button slot="append" icon="el-icon-search" @click="searchGoods"></el-button>
+                </el-input>
+              </el-col>
+              <el-col :span="2">
+                <img v-if="goodsImgUrl.length>0" :src="goodsImgUrl" width="28px" height="28px"/>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
           <el-tab-pane label="地址" name="second"></el-tab-pane>
         </el-tabs>
-      </el-header>
-      <el-main>Main</el-main>
-    </el-container>
+    </div>
   </div>
 </template>
 
@@ -24,8 +33,10 @@
       return {
         qrLoginImg: '',
         page: null,
-        isLogin: true,
-        activeName: 'first'
+        isLogin: false,
+        activeName: 'first',
+        goodsUrl: '',
+        goodsImgUrl: ''
       }
     },
     created () {
@@ -59,10 +70,19 @@
         document.title = arg
         self.isLogin = true
       })
+
+      ipc.on('goods-info-ok', function (event, arg) {
+        self.goodsImgUrl = arg.goodsImgUrl
+        console.log('goodsInfo', arg)
+      })
     },
     methods: {
       handleClick (tab, event) {
         console.log(tab, event)
+      },
+      searchGoods () {
+        const self = this
+        ipc.send('get-goods-info', self.goodsUrl)
       }
     }
   }

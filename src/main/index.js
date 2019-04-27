@@ -89,3 +89,18 @@ ipc.on('get-nick-name', function (event, arg) {
   }
   main()
 })
+
+ipc.on('get-goods-info', function (event, arg) {
+  async function main () {
+    await page.goto(arg)
+    let goodsImgUrl = await page.evaluate(() => {
+      let goodsImgUrl = document.querySelector('#J_ImgBooth').src
+      return goodsImgUrl
+    })
+    let goodsInfo = {
+      goodsImgUrl: goodsImgUrl
+    }
+    event.sender.send('goods-info-ok', goodsInfo)
+  }
+  main()
+})

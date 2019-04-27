@@ -52,7 +52,7 @@ let page = null
 
 ipc.on('create-page', function (event, arg) {
   async function main () {
-    const browser = await puppeteer.launch({headless: true})
+    const browser = await puppeteer.launch({headless: false})
     page = await browser.newPage()
     event.sender.send('page-ok', '')
   }
@@ -93,13 +93,17 @@ ipc.on('get-nick-name', function (event, arg) {
 ipc.on('get-goods-info', function (event, arg) {
   async function main () {
     await page.goto(arg)
-    let goodsImgUrl = await page.evaluate(() => {
+    let goodsInfo = await page.evaluate(() => {
+      let goodsJson = JSON.parse(document.querySelector('#J_DetailMeta > div.tm-clear > script:nth-child(6)').innerText.replace(/\+/g, '').replace(/[ ]/g, '').replace(/[\r\n]/g, '').split('{"skuList":')[1].split(',"defSelected":')[0])
+      goodsJson.filter(goods => {
+
+      })
       let goodsImgUrl = document.querySelector('#J_ImgBooth').src
-      return goodsImgUrl
+      return {
+        goodsImgUrl: goodsImgUrl,
+        goodsJson: goodsJson
+      }
     })
-    let goodsInfo = {
-      goodsImgUrl: goodsImgUrl
-    }
     event.sender.send('goods-info-ok', goodsInfo)
   }
   main()

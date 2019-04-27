@@ -45,3 +45,47 @@ app.on('activate', () => {
     createWindow()
   }
 })
+
+const puppeteer = require('puppeteer')
+const ipc = require('electron').ipcMain
+let page = null
+
+ipc.on('create-page', function (event, arg) {
+  async function main () {
+    const browser = await puppeteer.launch({headless: false})
+    page = await browser.newPage()
+    event.sender.send('page-ok', '')
+  }
+  main()
+})
+
+ipc.on('login', function (event, arg) {
+  async function main () {
+    await page.goto('https://login.taobao.com/member/login.jhtml?redirectURL=https%3A%2F%2Fwww.taobao.com%2F')
+    let qrLoginImg = await page.evaluate(() => {
+      let qrLoginImg = document.querySelector('#J_QRCodeImg > img').src
+      return qrLoginImg
+    })
+    event.sender.send('qr-img-ok', qrLoginImg)
+    try {
+      await page.waitForNavigation({
+        waitUntil: 'load'
+      })
+      event.sender.send('login-ok', '')
+    } catch (e) {
+      event.sender.send('re-login', '')
+    }
+  }
+  main()
+})
+
+ipc.on('get-nick-name', function (event, arg) {
+  async function main () {
+    let nickName = await page.evaluate(() => {
+      let nickName = document.querySelector('#J_SiteNavLogin > div.site-nav-menu-hd > div.site-nav-user > a.site-nav-login-info-nick').innerHTML
+      return nickName
+    })
+    event.sender.send('nick-name-ok', nickName)
+  }
+  main()
+})

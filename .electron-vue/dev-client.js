@@ -27,7 +27,6 @@ hotClient.subscribe(event => {
           color: #fff;
           font-family: 'Source Sans Pro', sans-serif;
           left: 20px;
-          padding: 8px 12px;
           position: absolute;
         }
       </style>

@@ -20,9 +20,9 @@ function createWindow () {
    * Initial window options
    */
   mainWindow = new BrowserWindow({
-    height: 563,
+    height: 300,
     useContentSize: true,
-    width: 1000
+    width: 400
   })
 
   mainWindow.loadURL(winURL)
@@ -52,7 +52,7 @@ let page = null
 
 ipc.on('create-page', function (event, arg) {
   async function main () {
-    const browser = await puppeteer.launch({headless: false})
+    const browser = await puppeteer.launch({headless: true})
     page = await browser.newPage()
     event.sender.send('page-ok', '')
   }

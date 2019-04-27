@@ -23,6 +23,9 @@
     "postinstall": "npm run lint:fix"
   },
   "dependencies": {
+    "element-theme": "^2.0.1",
+    "element-theme-chalk": "^2.8.2",
+    "element-ui": "^2.8.2",
     "puppeteer": "^1.14.0",
     "vue": "^2.5.16"
   },

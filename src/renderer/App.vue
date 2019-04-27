@@ -3,7 +3,15 @@
     <div class="qrLoginImg" v-if="!isLogin">
       <img :src="qrLoginImg"/>
     </div>
-    <div ></div>
+    <el-container v-if="isLogin">
+      <el-header height="30px">
+        <el-tabs v-model="activeName" @tab-click="handleClick">
+          <el-tab-pane label="抢购" name="first"></el-tab-pane>
+          <el-tab-pane label="地址" name="second"></el-tab-pane>
+        </el-tabs>
+      </el-header>
+      <el-main>Main</el-main>
+    </el-container>
   </div>
 </template>
 
@@ -16,7 +24,8 @@
       return {
         qrLoginImg: '',
         page: null,
-        isLogin: false
+        isLogin: true,
+        activeName: 'first'
       }
     },
     created () {
@@ -52,6 +61,9 @@
       })
     },
     methods: {
+      handleClick (tab, event) {
+        console.log(tab, event)
+      }
     }
   }
 </script>

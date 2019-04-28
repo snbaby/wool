@@ -110,7 +110,11 @@ ipc.on('get-goods-total', function (event, arg) {
   async function main () {
     let orderMaxNum = await page.evaluate(() => {
       arg.split(';').forEach(item => {
+        if (document.querySelector(`[data-value='${item}']`).style.display === '') {
+          page.click(`[data-value='${item}']`)
+        } else {
 
+        }
       })
     })
     event.sender.send('goods-total-ok', orderMaxNum)

@@ -7,14 +7,31 @@
         <el-tabs v-model="activeName" @tab-click="handleClick">
           <el-tab-pane label="抢购" name="first">
             <el-row>
-              <el-col :span="22">
+              <el-col :span="20">
                 <el-input placeholder="请输入商品地址" size="mini" v-model="goodsUrl">
-                  <template slot="prepend">URL</template>
                   <el-button slot="append" icon="el-icon-search" @click="searchGoods"></el-button>
                 </el-input>
               </el-col>
-              <el-col :span="2">
+              <el-col :span="4">
                 <img v-if="goodsImgUrl.length>0" :src="goodsImgUrl" width="28px" height="28px"/>
+              </el-col>
+            </el-row>
+            <el-row v-if="goodsImgUrl.length>0">
+              <el-col :span="10">
+                <el-select v-model="orderType" size="mini" filterable clearable placeholder="请选择商品类型" style="width: 100%" @change="handleOrderType">
+                  <el-option
+                          v-for="item in goodsJson"
+                          :key="item.pvs"
+                          :label="item.names"
+                          :value="item.pvs">
+                  </el-option>
+                </el-select>
+              </el-col>
+              <el-col :span="10" v-if="orderMaxNum>-1">
+                <el-input-number v-model="orderNum" size="mini" @change="handleChange" :min="0" :max="orderMaxNum" label="描述文字" style="width: 100%"></el-input-number>
+              </el-col>
+              <el-col :span="4"  v-if="orderMaxNum>-1">
+                <span style="font-size: 12px;color: #606266;line-height: 28px">库存：{{orderMaxNum}}</span>
               </el-col>
             </el-row>
           </el-tab-pane>
@@ -36,10 +53,18 @@
         isLogin: false,
         activeName: 'first',
         goodsUrl: '',
-        goodsImgUrl: ''
+        goodsImgUrl: '',
+        goodsJson: [],
+        orderType: '',
+        orderNum: 0,
+        orderMaxNum: -1
       }
     },
     created () {
+      const a = 1
+      if (a === 2) {
+        return
+      }
       const self = this
       // 创建浏览器
       ipc.send('create-page', '')
@@ -73,16 +98,33 @@
 
       ipc.on('goods-info-ok', function (event, arg) {
         self.goodsImgUrl = arg.goodsImgUrl
+        self.goodsJson = arg.goodsJson
         console.log('goodsInfo', arg)
+      })
+
+      ipc.on('goods-total-ok', function (event, arg) {
+        self.orderMaxNum = arg
+        console.log('goods-tota', arg)
       })
     },
     methods: {
       handleClick (tab, event) {
         console.log(tab, event)
       },
+      handleChange (value) {
+        console.log(value)
+      },
       searchGoods () {
         const self = this
         ipc.send('get-goods-info', self.goodsUrl)
+      },
+      handleOrderType (value) {
+        const self = this
+        if (value == null) {
+          self.orderMaxNum = -1
+        } else {
+          ipc.send('get-goods-total', value)
+        }
       }
     }
   }

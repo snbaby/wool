@@ -60,6 +60,9 @@ const puppeteer = require('puppeteer')
 const ipc = require('electron').ipcMain
 let page = null
 let browser = null
+const sleep = function (ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 ipc.on('create-page', function (event, arg) {
   async function main () {
     browser = await puppeteer.launch({headless: false})
@@ -109,11 +112,9 @@ ipc.on('get-address', function (event, arg) {
         logger.info('拦截到了这条url然后就该请求了')
         page.on('response', response => {
           if (response.url().startsWith('https://h5api.m.taobao.com/h5/mtop.taobao.mbis.getdeliveraddrlist')) {
-            const req = response.request()
-            logger.info('Response 的:' + req.method, response.status, req.url)
             let message = response.text()
             message.then(function (result) {
-              result = result.replace(' mtopjsonp5(', '').replace('})', '}')
+              result = result.substring(result.indexOf('({') + 1).replace('})', '}')
               result = JSON.parse(result)
               event.sender.send('get-address', JSON.parse(result.data.returnValue))
             })
@@ -177,5 +178,63 @@ ipc.on('get-goods-total', function (event, arg) {
     event.sender.send('goods-total-ok', orderMaxNum)
   }
   // event.sender.send('goods-total-ok', 5)
+  main()
+})
+
+ipc.on('set-def-address', function (event, arg) {
+  async function main () {
+    await page.click('#container > div > div.addressList > div.next-table > table > tbody > tr:nth-child(' + arg + ') > td.next-table-cell.last > div > div > span')
+  }
+  main()
+})
+
+ipc.on('set-address-info', function (event, arg) {
+  logger.info('arg', arg)
+  async function main () {
+    const handLi = async function (value) {
+      let num = await page.evaluate(value => {
+        let ulArr = document.querySelectorAll('#cndzkEntrance > div:nth-child(2) > div > div > div.cndzk-entrance-division-box > ul.cndzk-entrance-division-box-content > div > li')
+        let list = Array.prototype.slice.call(ulArr)
+        let num = null
+        list.forEach((item, index) => {
+          if (item.innerText === value) {
+            num = index + 1
+          }
+        })
+        return num
+      }, value)
+      if (num) {
+        await page.click('#cndzkEntrance > div:nth-child(2) > div > div > div.cndzk-entrance-division-box > ul.cndzk-entrance-division-box-content > div > li:nth-child(' + num + ')')
+      }
+    }
+    await page.click('#cndzkEntrance > div:nth-child(2) > div > div > div > div')
+    await sleep(200)
+    await page.click('#cndzkEntrance > div:nth-child(2) > div > div > div.cndzk-entrance-division-box > ul.cndzk-entrance-division-box-title > li:nth-child(1)')
+    await sleep(200)
+    await handLi(arg[0])
+    await sleep(200)
+    await handLi(arg[1])
+    await sleep(200)
+    await handLi(arg[2])
+    await sleep(200)
+    await page.click('#cndzkEntrance > div:nth-child(2) > div > div > div > div')
+  }
+  main()
+})
+
+ipc.on('set-address-other', function (event, arg) {
+  logger.info('arg', arg)
+  async function main () {
+    await page.type('#cndzkEntrance > div:nth-child(4) > div > div > textarea', arg.address, { delay: 10 })
+    await page.type('#myForm > div:nth-child(1) > div.next-col.next-col-19.next-form-item-control > span > input', arg.mail, { delay: 10 })
+    await page.type('#myForm > div:nth-child(2) > div.next-col.next-col-19.next-form-item-control > span > input', arg.name, { delay: 10 })
+    await page.type('#myForm > div.next-row.next-form-item.next-left.next-medium.form-item-mobile > div.next-col.next-col-19.next-form-item-control > div > div.next-col.next-col-14 > div > div > span > input', arg.phone, { delay: 100 })
+    await sleep(200)
+    await page.click('#defaultAddress')
+    await sleep(200)
+    await page.click('#myForm > div:nth-child(5) > div.next-col.next-col-19.next-form-item-control > button')
+    await sleep(500)
+    await page.click('body > div.next-overlay-wrapper.opened > div.next-dialog.next-closeable.next-overlay-inner > div.next-dialog-footer.next-align-right > button.next-btn.next-medium.next-btn-primary.next-dialog-btn')
+  }
   main()
 })

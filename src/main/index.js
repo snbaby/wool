@@ -303,22 +303,26 @@ ipc.on('confirm-order', function (event, arg) {
 ipc.on('refresh-info', function (event, arg) {
   logger.info('arg', arg, page.url())
   async function main () {
-    await page.evaluate(value => {
-      document.execCommand('Refresh')
-    })
+    logger.info('定时刷新', page.url())
+    await page.goto(page.url())
     let buyStatus = await page.evaluate(value => {
       let startTime = null
       let startTimeNode = document.querySelector('#J_DetailMeta > div.tm-clear > div.tb-property > div > div.tb-key > div > div > div.tm-countdown > div.tm-countdown-notice > div')
       if (startTimeNode) {
         startTime = startTimeNode.innerText
-        if (startTime.indexOf('天') === -1 && startTime.indexOf('小时') === -1 && startTime.indexOf('分') === -1 && startTime.indexOf('分') > -1) {
+        console.log('startTime===', startTime)
+        if (startTime.indexOf('天') === -1 && startTime.indexOf('小时') === -1 && startTime.indexOf('分') === -1 && startTime.indexOf('秒') > -1) {
           return true
+        } else {
+          return false
         }
       } else {
         return true
       }
     })
+    logger.info('buyStatus', buyStatus)
     if (buyStatus) {
+      logger.info('开始抢购', new Date())
       event.sender.send('buy-order-start', '')
     }
   }

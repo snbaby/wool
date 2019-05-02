@@ -20505,7 +20505,7 @@
         // 重新登陆
         document.title = arg
         self.isLogin = true
-        cron.schedule('10 9,19,29,39,49,59 */1 * *', () => {
+        cron.schedule('10 9,19,29,39,45,49,52,59 */1 * * *', () => {
           ipc.send('refresh-info', event)
         })
       })

@@ -37,6 +37,11 @@
                 <span style="font-size: 12px;color: #606266;line-height: 28px">库存：{{orderMaxNum}}</span>
               </el-col>
             </el-row>
+            <el-row>
+              <el-col :span="24">
+                <el-button @click="submitOrder">购买</el-button>
+              </el-col>
+            </el-row>
           </el-tab-pane>
           <el-tab-pane label="地址" name="second">
             <el-button @click="addAddress">添加</el-button>
@@ -111,6 +116,7 @@
 <script>
   // 通过全局变量获取page对象
   const ipc = require('electron').ipcRenderer
+  const cron = require('node-cron')
   export default {
     name: 'wool',
     data () {
@@ -20454,6 +20460,8 @@
         }],
         addressData: [],
         dialogVisible: false,
+        startTime: false,
+        orderTimer: false,
         sizeForm: {
           name: '',
           region: '',
@@ -20497,10 +20505,14 @@
         // 重新登陆
         document.title = arg
         self.isLogin = true
+        cron.schedule('10 9,19,29,39,49,59 */1 * *', () => {
+          ipc.send('refresh-info', event)
+        })
       })
 
       ipc.on('goods-info-ok', function (event, arg) {
         self.goodsImgUrl = arg.goodsImgUrl
+        self.startTime = arg.startTime
         self.goodsJson = arg.goodsJson
         console.log('goodsInfo', arg)
       })
@@ -20513,6 +20525,22 @@
       ipc.on('get-address', function (event, arg) {
         console.log('get-address', arg)
         self.addressData = arg
+      })
+      ipc.on('buy-order-start', function (event, arg) {
+        console.log('确认商品型号！')
+        ipc.send('buy-order', event)
+      })
+      ipc.on('comfirm-order-info', function (event, arg) {
+        console.log('确认商品型号成功！，开始抢购')
+        let type = 'tm'
+        if (self.goodsUrl.indexOf('item.taobao.com') > -1) {
+          type = 'tb'
+        }
+        ipc.send('confirm-order', type)
+      })
+      ipc.on('buy-order-success', function (event, arg) {
+        console.log('抢购成功！')
+        clearInterval(self.orderTimer)
       })
     },
     methods: {
@@ -20544,16 +20572,18 @@
       addAddress (value) {
         this.dialogVisible = true
       },
+      // 提交地址信息
       submitForm () {
-        ipc.send('set-address-other', this.sizeForm)
-        this.sizeForm = {
+        const self = this
+        ipc.send('set-address-other', self.sizeForm)
+        self.sizeForm = {
           name: '',
           region: '',
           address: '',
           mail: '',
           phone: ''
         }
-        this.dialogVisible = false
+        self.dialogVisible = false
       },
       handleClose (done) {
         this.$confirm('确认关闭？')
@@ -20561,6 +20591,18 @@
             done()
           })
           .catch(_ => {})
+      },
+      // 确认抢购
+      submitOrder () {
+        let type = 'tm'
+        if (this.goodsUrl.indexOf('item.taobao.com') > -1) {
+          type = 'tb'
+        }
+        let data = {
+          orderType: this.orderType,
+          type: type
+        }
+        ipc.send('create-order', data)
       }
     }
   }

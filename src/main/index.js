@@ -60,6 +60,7 @@ const puppeteer = require('puppeteer')
 const ipc = require('electron').ipcMain
 let page = null
 let browser = null
+let order = null
 const sleep = function (ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -144,6 +145,7 @@ ipc.on('get-goods-info', function (event, arg) {
         goodsJson: data
       }
     })
+    global.logger.info(JSON.stringify(goodsInfo))
     let skuList = goodsInfo.goodsJson.valItemInfo.skuList
     let skuMap = goodsInfo.goodsJson.valItemInfo.skuMap
     skuList.forEach(item => {
@@ -235,6 +237,90 @@ ipc.on('set-address-other', function (event, arg) {
     await page.click('#myForm > div:nth-child(5) > div.next-col.next-col-19.next-form-item-control > button')
     await sleep(500)
     await page.click('body > div.next-overlay-wrapper.opened > div.next-dialog.next-closeable.next-overlay-inner > div.next-dialog-footer.next-align-right > button.next-btn.next-medium.next-btn-primary.next-dialog-btn')
+  }
+  main()
+})
+
+// 点击抢购按钮事件
+ipc.on('create-order', function (event, arg) {
+  order = arg
+  async function main () {
+    let buyStatus = await page.evaluate(value => {
+      if (document.querySelector('#J_DetailMeta > div.tm-clear > div.tb-property > div > div.tb-key > div > div > div.tm-countdown > div.tm-countdown-notice > div')) {
+        return false
+      } else {
+        return true
+      }
+    })
+    if (buyStatus) {
+      event.sender.send('buy-order-start', '')
+    }
+  }
+  main()
+})
+
+// 确认商品型号
+ipc.on('buy-order', function (event, arg) {
+  arg = order
+  async function main () {
+    let list = arg.orderType.split(';')
+    logger.info('list', list)
+    for (let i in list) {
+      logger.info('listi', list[i])
+      if (page.url().indexOf(list[i]) === -1) {
+        await page.click(`[data-value='${list[i]}']`)
+      }
+    }
+    event.sender.send('comfirm-order-info', '')
+  }
+  main()
+})
+
+// 提交订单
+ipc.on('confirm-order', function (event, arg) {
+  logger.info('arg', arg, page.url())
+  async function main () {
+    if (arg === 'tm') {
+      logger.info('提交订单！')
+      await page.click('#J_LinkBuy')
+      logger.info('等等确认按钮加载！')
+      await page.waitForSelector('#submitOrder_1 > div > a')
+      logger.info('确认订单！')
+      await page.click('#submitOrder_1 > div > a')
+      event.sender.send('buy-order-success', '')
+    } else {
+      await page.click('#J_juValid > div.tb-btn-buy > a')
+      await page.waitForSelector('#submitOrder_1 > div > a')
+      await page.click('#submitOrder_1 > div.wrapper > a')
+      event.sender.send('buy-order-success', '')
+    }
+  }
+  // event.sender.send('goods-total-ok', 5)
+  main()
+})
+
+// 定时刷新
+ipc.on('refresh-info', function (event, arg) {
+  logger.info('arg', arg, page.url())
+  async function main () {
+    await page.evaluate(value => {
+      document.execCommand('Refresh')
+    })
+    let buyStatus = await page.evaluate(value => {
+      let startTime = null
+      let startTimeNode = document.querySelector('#J_DetailMeta > div.tm-clear > div.tb-property > div > div.tb-key > div > div > div.tm-countdown > div.tm-countdown-notice > div')
+      if (startTimeNode) {
+        startTime = startTimeNode.innerText
+        if (startTime.indexOf('天') === -1 && startTime.indexOf('小时') === -1 && startTime.indexOf('分') === -1 && startTime.indexOf('分') > -1) {
+          return true
+        }
+      } else {
+        return true
+      }
+    })
+    if (buyStatus) {
+      event.sender.send('buy-order-start', '')
+    }
   }
   main()
 })

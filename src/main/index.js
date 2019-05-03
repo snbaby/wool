@@ -36,9 +36,12 @@ function createWindow () {
   mainWindow = new BrowserWindow({
     height: 300,
     useContentSize: true,
-    width: 450
+    width: 450,
+    webPreferences: {
+      devTools: true
+    }
   })
-
+  mainWindow.webContents.openDevTools()
   mainWindow.loadURL(winURL)
 
   mainWindow.on('closed', () => {
@@ -59,8 +62,9 @@ app.on('activate', () => {
     createWindow()
   }
 })
-
+console.log('puppeteer')
 const puppeteer = require('puppeteer')
+console.log('ipc')
 const ipc = require('electron').ipcMain
 let page = null
 let browser = null
@@ -69,6 +73,7 @@ const sleep = function (ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 ipc.on('create-page', function (event, arg) {
+  console.log('create-page-index')
   async function main () {
     browser = await puppeteer.launch({headless: false})
     page = await browser.newPage()
@@ -270,7 +275,9 @@ ipc.on('buy-order', function (event, arg) {
   async function main () {
     let list = arg.orderType.split(';')
     logger.info('list', list)
-    await page.$eval('#J_Amount > span.tb-amount-widget.mui-amount-wrap > input', (input, orderNum) => { input.value = orderNum }, arg.orderNum)
+    if (arg.orderNum) {
+      await page.$eval('#J_Amount > span.tb-amount-widget.mui-amount-wrap > input', (input, orderNum) => { input.value = orderNum }, arg.orderNum)
+    }
     for (let i in list) {
       logger.info('listi', list[i])
       let status = await page.evaluate(value => {
@@ -384,22 +391,10 @@ ipc.on('partially-repay', function (event, arg) {
     // // 模拟移动端设备
     // await page.emulate(iPhone6)
     await page.goto('https://main.m.taobao.com/olist/index.html')
-    let status = await page.evaluate(value => {
-      if (document.querySelector('#ptr > div.list-card > div:nth-child(2) > div:nth-child(6) > div > div:nth-child(2) > div:nth-child(3) > div')) {
-        return true
-      } else {
-        return false
-      }
-    })
-    logger.info('代付状态', status)
     try {
       await sleep(1000)
       logger.info('点击代付按钮A')
-      if (status) {
-        await page.tap('#ptr > div.list-card > div:nth-child(2) > div:nth-child(6) > div > div:nth-child(2) > div:nth-child(3) > div')
-      } else {
-        await page.tap('#ptr > div.list-card > div:nth-child(2) > div:nth-child(5) > div > div:nth-child(2) > div:nth-child(3) > div')
-      }
+      await page.tap('[data-spm="orderlist_orderop_default_1"] > div > div:nth-child(2) > div:nth-child(3) > div')
       await sleep(1000)
       await page.waitForSelector('[name=\'peerPayerEmail\']')
       logger.info('代付', arg)

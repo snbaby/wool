@@ -1,5 +1,7 @@
 <template>
   <div id="app">
+    asdasd
+    <el-button>asd111</el-button>
     <div class="qrLoginImg" v-if="!isLogin">
       <img :src="qrLoginImg"/>
     </div>
@@ -20480,16 +20482,20 @@
       }
     },
     created () {
+      console.log('created')
       const a = 1
       if (a === 2) {
         return
       }
       const self = this
+      console.log('create-page')
       // 创建浏览器
       ipc.send('create-page', '')
       // 浏览器创建成功
+      console.log('create-ok')
       ipc.on('page-ok', function (event, arg) {
         // 登陆
+        console.log('login')
         ipc.send('login', '')
       })
       // 获得二维码
@@ -20555,7 +20561,7 @@
       ipc.on('buy-order-success', function (event, arg) {
         console.log('抢购成功！')
         clearInterval(self.orderTimer)
-        ipc.send('partially-repay', event)
+        ipc.send('partially-repay', '')
       })
     },
     methods: {

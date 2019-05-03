@@ -4,7 +4,7 @@ import App from './App'
 
 import ElementUI from 'element-ui'
 
-import '../../static/index.css'
+import 'element-ui/lib/theme-chalk/index.css'
 
 Vue.use(ElementUI)
 

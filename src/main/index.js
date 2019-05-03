@@ -12,6 +12,10 @@ let logger = log4js.getLogger('UI')
 
 global.logger = logger
 logger.info('日志初始化成功')
+// eslint-disable-next-line handle-callback-err
+process.on('uncaughtException', (error) => {
+  logger.info('call uncaughtException handle')
+})
 /**
  * Set `__static` path to static files in production
  * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
@@ -243,6 +247,7 @@ ipc.on('set-address-other', function (event, arg) {
 
 // 点击抢购按钮事件
 ipc.on('create-order', function (event, arg) {
+  logger.info('开始抢购', arg)
   order = arg
   async function main () {
     let buyStatus = await page.evaluate(value => {
@@ -265,13 +270,22 @@ ipc.on('buy-order', function (event, arg) {
   async function main () {
     let list = arg.orderType.split(';')
     logger.info('list', list)
+    await page.$eval('#J_Amount > span.tb-amount-widget.mui-amount-wrap > input', (input, orderNum) => { input.value = orderNum }, arg.orderNum)
     for (let i in list) {
       logger.info('listi', list[i])
-      if (page.url().indexOf(list[i]) === -1) {
+      let status = await page.evaluate(value => {
+        if (document.querySelector(`[data-value='${value}']`).classList.value.indexOf('tb-selected') === -1) {
+          return true
+        } else {
+          return false
+        }
+      }, list[i])
+      logger.info('status', status)
+      if (status) {
         await page.click(`[data-value='${list[i]}']`)
       }
     }
-    event.sender.send('comfirm-order-info', '')
+    event.sender.send('comfirm-order-info', order.buyStatus)
   }
   main()
 })
@@ -281,18 +295,44 @@ ipc.on('confirm-order', function (event, arg) {
   logger.info('arg', arg, page.url())
   async function main () {
     if (arg === 'tm') {
-      logger.info('提交订单！')
-      await page.click('#J_LinkBuy')
-      logger.info('等等确认按钮加载！')
-      await page.waitForSelector('#submitOrder_1 > div > a')
-      logger.info('确认订单！')
-      await page.click('#submitOrder_1 > div > a')
-      event.sender.send('buy-order-success', '')
+      await sleep(500)
+      let status = await page.evaluate(value => {
+        console.log('data-spm-anchor-id', document.querySelector('#J_DetailMeta > div.tm-clear > div.tb-property > div > div.tb-key > div > div > div.tb-action.tm-clear').style.display === '')
+        if (document.querySelector('#J_DetailMeta > div.tm-clear > div.tb-property > div > div.tb-key > div > div > div.tb-action.tm-clear').style.display === '') {
+          return true
+        } else {
+          return false
+        }
+      })
+      logger.info('提交订单！', status)
+      if (status) {
+        await page.click('#J_LinkBuy')
+        logger.info('等等确认按钮加载！')
+        await page.waitForSelector('#submitOrder_1 > div > a')
+        logger.info('确认订单！')
+        await page.click('#submitOrder_1 > div > a')
+        await page.waitForNavigation({
+          waitUntil: 'load'
+        })
+        event.sender.send('buy-order-success', '')
+      }
     } else {
-      await page.click('#J_juValid > div.tb-btn-buy > a')
-      await page.waitForSelector('#submitOrder_1 > div > a')
-      await page.click('#submitOrder_1 > div.wrapper > a')
-      event.sender.send('buy-order-success', '')
+      let status = await page.evaluate(value => {
+        if (document.querySelector('#J_LinkBuy')) {
+          return true
+        } else {
+          return false
+        }
+      })
+      if (status) {
+        await page.click('#J_juValid > div.tb-btn-buy > a')
+        await page.waitForSelector('#submitOrder_1 > div > a')
+        await page.click('#submitOrder_1 > div.wrapper > a')
+        await page.waitForNavigation({
+          waitUntil: 'load'
+        })
+        event.sender.send('buy-order-success', arg.buyStatus)
+      }
     }
   }
   // event.sender.send('goods-total-ok', 5)
@@ -312,18 +352,63 @@ ipc.on('refresh-info', function (event, arg) {
         startTime = startTimeNode.innerText
         console.log('startTime===', startTime)
         if (startTime.indexOf('天') === -1 && startTime.indexOf('小时') === -1 && startTime.indexOf('分') === -1 && startTime.indexOf('秒') > -1) {
-          return true
+          return 1
         } else {
-          return false
+          return 0
         }
       } else {
-        return true
+        return 2
       }
     })
     logger.info('buyStatus', buyStatus)
     if (buyStatus) {
       logger.info('开始抢购', new Date())
-      event.sender.send('buy-order-start', '')
+      order.buyStatus = buyStatus
+      event.sender.send('buy-order-start', buyStatus)
+    }
+  }
+  main()
+})
+
+// 代付
+ipc.on('partially-repay', function (event, arg) {
+  logger.info('partially-repay')
+  if (!arg) {
+    arg = order.payAccount
+  }
+  async function main () {
+    logger.info('开始代付')
+    await sleep(1000)
+    // const devices = require('puppeteer/DeviceDescriptors')
+    // const iPhone6 = devices['iPhone 6']
+    // // 模拟移动端设备
+    // await page.emulate(iPhone6)
+    await page.goto('https://main.m.taobao.com/olist/index.html')
+    let status = await page.evaluate(value => {
+      if (document.querySelector('#ptr > div.list-card > div:nth-child(2) > div:nth-child(6) > div > div:nth-child(2) > div:nth-child(3) > div')) {
+        return true
+      } else {
+        return false
+      }
+    })
+    logger.info('代付状态', status)
+    try {
+      await sleep(1000)
+      logger.info('点击代付按钮A')
+      if (status) {
+        await page.tap('#ptr > div.list-card > div:nth-child(2) > div:nth-child(6) > div > div:nth-child(2) > div:nth-child(3) > div')
+      } else {
+        await page.tap('#ptr > div.list-card > div:nth-child(2) > div:nth-child(5) > div > div:nth-child(2) > div:nth-child(3) > div')
+      }
+      await sleep(1000)
+      await page.waitForSelector('[name=\'peerPayerEmail\']')
+      logger.info('代付', arg)
+      await sleep(1000)
+      await page.type('body > article > form > div > input[type="text"]', arg, { delay: 1000 })
+      await sleep(1000)
+      await page.tap('body > article > form > input.btn.btn-ok')
+    } catch (e) {
+      logger.info('点击代付按钮B')
     }
   }
   main()

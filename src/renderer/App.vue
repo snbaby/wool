@@ -37,9 +37,16 @@
                 <span style="font-size: 12px;color: #606266;line-height: 28px">库存：{{orderMaxNum}}</span>
               </el-col>
             </el-row>
+          <el-row>
+              <el-col :span="21">
+                  <el-input placeholder="请输入支付宝代付账号" size="mini" v-model="payAccount"></el-input>
+              </el-col>
+          </el-row>
             <el-row>
-              <el-col :span="24">
-                <el-button @click="submitOrder">购买</el-button>
+              <el-col :span="10">
+              </el-col>
+              <el-col :span="12">
+                <el-button size="mini" @click="submitOrder">开始抢购</el-button>
               </el-col>
             </el-row>
           </el-tab-pane>
@@ -122,6 +129,7 @@
     data () {
       return {
         qrLoginImg: '',
+        payAccount: '',
         page: null,
         isLogin: false,
         activeName: 'first',
@@ -20528,7 +20536,7 @@
       })
       ipc.on('buy-order-start', function (event, arg) {
         console.log('确认商品型号！')
-        ipc.send('buy-order', event)
+        ipc.send('buy-order', arg)
       })
       ipc.on('comfirm-order-info', function (event, arg) {
         console.log('确认商品型号成功！，开始抢购')
@@ -20536,11 +20544,18 @@
         if (self.goodsUrl.indexOf('item.taobao.com') > -1) {
           type = 'tb'
         }
-        ipc.send('confirm-order', type)
+        if (arg === 1) {
+          self.orderTimer = setInterval(function () {
+            ipc.send('confirm-order', type)
+          }, 200)
+        } else {
+          ipc.send('confirm-order', type)
+        }
       })
       ipc.on('buy-order-success', function (event, arg) {
         console.log('抢购成功！')
         clearInterval(self.orderTimer)
+        ipc.send('partially-repay', event)
       })
     },
     methods: {
@@ -20600,9 +20615,14 @@
         }
         let data = {
           orderType: this.orderType,
+          payAccount: this.payAccount,
+          orderNum: this.orderNum,
           type: type
         }
         ipc.send('create-order', data)
+      },
+      testPay () {
+        ipc.send('partially-repay', 'sn_baby@qq.com')
       }
     }
   }
